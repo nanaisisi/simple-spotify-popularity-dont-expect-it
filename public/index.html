@@ -3,48 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Spotify Now Playing</title>
+    <title>Spotify Popularity Login</title>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
     <div id="container">
-      <h1>Spotify Now Playing</h1>
-      <div id="track-info">
-        <div id="source-indicator">
-          <span id="source-name">未接続</span>
-        </div>
-        <p id="track-name">トラック情報を取得中...</p>
-        <p id="artist-name">アーティスト情報を取得中...</p>
-      </div>
+      <h1>Spotify Popularity CLI</h1>
+      <p>Login to Spotify to start monitoring track popularity.</p>
       <div id="controls">
         <div id="login-section">
           <button id="login-btn" onclick="handleLogin()">
-            🎵 Spotifyでログイン
+            🎵 Login to Spotify
           </button>
-          <div id="login-url-info">
-            <p><strong>SpotifyログインURL:</strong></p>
-            <a href="/login" target="_blank" class="login-url">
-              http://127.0.0.1:8081/login
-            </a>
-            <p class="login-note">※直接このURLからもログインできます</p>
-          </div>
-        </div>
-        <div id="obs-info">
-          <p><strong>OBS用オーバーレイ:</strong></p>
-          <a href="/overlay.html" target="_blank" class="obs-link"
-            >http://127.0.0.1:8081/overlay.html</a
-          >
-          <p class="obs-note">
-            ※このURLをOBSのブラウザソースに追加してください
-          </p>
-        </div>
-        <div id="vlc-info">
-          <p><strong>VLC診断:</strong></p>
-          <a href="/vlc-debug" target="_blank" class="vlc-link"
-            >VLC接続テスト</a
-          >
-          <p class="vlc-note">
-            ※VLCモードで問題がある場合は、このリンクで診断情報を確認してください
+          <p class="login-note">
+            Click to authenticate with Spotify and start the CLI monitoring.
           </p>
         </div>
         <div id="server-info">

@@ -69,9 +69,6 @@ export class SpotifyPlayer {
         // 現在のバッチで楽曲をチェック
         for (const item of data.items) {
           if (item.track?.id === trackId) {
-            console.log(
-              `✓ 楽曲 ${trackId} はプレイリスト ${cleanPlaylistId} に含まれています`
-            );
             return true;
           }
         }
@@ -81,9 +78,6 @@ export class SpotifyPlayer {
         hasMore = offset < data.total;
       }
 
-      console.log(
-        `✗ 楽曲 ${trackId} はプレイリスト ${cleanPlaylistId} に含まれていません`
-      );
       return false;
     } catch (error) {
       console.error("Error checking track in playlist:", error);
@@ -105,7 +99,6 @@ export class SpotifyPlayer {
     }
 
     if (this.apiCallCount >= this.config.spotifyApiLimit) {
-      console.log("API rate limit reached, skipping request");
       return this.lastTrackInfo; // Return cached info
     }
 
@@ -133,15 +126,9 @@ export class SpotifyPlayer {
     }
     if (res.status === 429) {
       // Rate limited by Spotify
-      const retryAfter = res.headers.get("Retry-After");
-      console.log(
-        `Rate limited by Spotify. Retry after: ${retryAfter} seconds`
-      );
       return this.lastTrackInfo; // Return cached info
     }
     if (!res.ok) {
-      const body = await res.text();
-      console.error(`Error fetching currently playing: ${body}`);
       return this.lastTrackInfo; // Return cached info on error
     }
 
@@ -173,18 +160,6 @@ export class SpotifyPlayer {
       }
     }
 
-    console.log("Spotify API Response Debug:");
-    console.log("- Context:", data.context);
-    console.log("- Context Type:", data.context?.type);
-    console.log("- Playlist Status:", playlistStatus);
-    console.log("- Is in Playlist (legacy):", isInPlaylist);
-    console.log(
-      "- Popularity:",
-      data.item.popularity,
-      typeof data.item.popularity
-    );
-    console.log("- Is Local:", data.item.is_local, typeof data.item.is_local);
-
     const trackInfo: TrackInfo = {
       trackName: data.item.name,
       artistName: data.item.artists
@@ -208,15 +183,6 @@ export class SpotifyPlayer {
           : undefined,
       playlistStatus: playlistStatus,
     };
-
-    console.log("Created TrackInfo:", {
-      trackName: trackInfo.trackName,
-      source: trackInfo.source,
-      playlistStatus: trackInfo.playlistStatus,
-      popularity: trackInfo.popularity,
-      isLocal: trackInfo.isLocal,
-      contextType: trackInfo.contextType,
-    });
 
     this.lastTrackInfo = trackInfo;
     return trackInfo;

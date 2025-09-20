@@ -4,17 +4,10 @@
  */
 
 import { SpotifyAuth } from "../auth/spotify-auth.ts";
-import { VLCPlayer } from "../media/vlc-player.ts";
-import { WebSocketManager } from "../websocket/websocket-handler.ts";
 import { generateFavicon } from "../utils/helpers.ts";
 
 export class RouteHandler {
-  constructor(
-    private config: any,
-    private spotifyAuth: SpotifyAuth,
-    private vlcPlayer: VLCPlayer,
-    private webSocketManager: WebSocketManager
-  ) {}
+  constructor(private config: any, private spotifyAuth: SpotifyAuth) {}
 
   /**
    * メインルートハンドラー
@@ -28,18 +21,6 @@ export class RouteHandler {
 
       case "/callback":
         return this.handleCallback(url);
-
-      case "/ws":
-        return this.handleWebSocket(req);
-
-      case "/overlay":
-        return this.handleOverlay();
-
-      case "/vlc-debug":
-        return this.handleVLCDebug();
-
-      case "/vlc-test":
-        return this.handleVLCTest();
 
       case "/favicon.ico":
         return this.handleFavicon();
@@ -71,58 +52,6 @@ export class RouteHandler {
     }
 
     return Response.redirect(`http://127.0.0.1:${this.config.port}/`, 302);
-  }
-
-  /**
-   * WebSocket アップグレード
-   */
-  private handleWebSocket(req: Request): Response {
-    const { response, socket } = (globalThis as any).Deno.upgradeWebSocket(req);
-    this.webSocketManager.handleConnection(socket);
-    return response;
-  }
-
-  /**
-   * オーバーレイページ
-   */
-  private async handleOverlay(): Promise<Response> {
-    const html = await (globalThis as any).Deno.readTextFile(
-      "public/overlay.html"
-    );
-    return new Response(html, {
-      headers: { "Content-Type": "text/html" },
-    });
-  }
-
-  /**
-   * VLC デバッグ情報
-   */
-  private async handleVLCDebug(): Promise<Response> {
-    if (!this.config.vlcEnabled) {
-      return new Response(
-        "VLC mode is not enabled. Set vlc.enabled=true in config.toml",
-        { status: 400 }
-      );
-    }
-
-    const debugInfo = await this.vlcPlayer.getDebugInfo();
-    return new Response(debugInfo, {
-      headers: { "Content-Type": "text/plain" },
-    });
-  }
-
-  /**
-   * VLC テスト診断
-   */
-  private async handleVLCTest(): Promise<Response> {
-    if (!this.config.vlcEnabled) {
-      return new Response("VLC mode is not enabled", { status: 400 });
-    }
-
-    const diagnostic = await this.vlcPlayer.getTestDiagnostic();
-    return new Response(JSON.stringify(diagnostic, null, 2), {
-      headers: { "Content-Type": "application/json" },
-    });
   }
 
   /**
