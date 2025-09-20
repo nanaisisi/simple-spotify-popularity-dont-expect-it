@@ -3,6 +3,8 @@ import { SpotifyAuth } from "../auth/spotify-auth.ts";
 export interface TrackInfo {
   trackName: string;
   artistName: string;
+  albumName?: string; // アルバム名
+  albumType?: string; // アルバムタイプ (album, single, compilation)
   isPlaying: boolean;
   progressMs: number;
   durationMs: number;
@@ -165,6 +167,8 @@ export class SpotifyPlayer {
       artistName: data.item.artists
         .map((artist: any) => artist.name)
         .join(", "),
+      albumName: data.item.album?.name || undefined, // アルバム名
+      albumType: data.item.album?.album_type || undefined, // アルバムタイプ
       isPlaying: data.is_playing,
       progressMs: data.progress_ms,
       durationMs: data.item.duration_ms,
