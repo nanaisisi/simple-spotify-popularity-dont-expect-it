@@ -4,10 +4,15 @@
  */
 
 import { SpotifyAuth } from "../auth/spotify-auth.ts";
+import { UnifiedPlayer } from "../media/unified-player.ts";
 import { generateFavicon } from "../utils/helpers.ts";
 
 export class RouteHandler {
-  constructor(private config: any, private spotifyAuth: SpotifyAuth) {}
+  constructor(
+    private config: any,
+    private spotifyAuth: SpotifyAuth,
+    private unifiedPlayer: UnifiedPlayer
+  ) {}
 
   /**
    * メインルートハンドラー
@@ -21,6 +26,9 @@ export class RouteHandler {
 
       case "/callback":
         return this.handleCallback(url);
+
+      case "/api/current-track":
+        return this.handleCurrentTrack();
 
       case "/favicon.ico":
         return this.handleFavicon();
@@ -65,6 +73,47 @@ export class RouteHandler {
         "Cache-Control": "public, max-age=86400",
       },
     });
+  }
+
+  /**
+   * 現在再生中の楽曲情報を取得
+   */
+  private async handleCurrentTrack(): Promise<Response> {
+    try {
+      const trackInfo = await this.unifiedPlayer.getCurrentlyPlaying();
+
+      if (trackInfo) {
+        return new Response(JSON.stringify(trackInfo), {
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        });
+      } else {
+        return new Response(
+          JSON.stringify({ error: "No track currently playing" }),
+          {
+            status: 204,
+            headers: {
+              "Content-Type": "application/json",
+              "Access-Control-Allow-Origin": "*",
+            },
+          }
+        );
+      }
+    } catch (error) {
+      console.error("Error getting current track:", error);
+      return new Response(
+        JSON.stringify({ error: "Failed to get track info" }),
+        {
+          status: 500,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
   }
 
   /**

@@ -3,17 +3,17 @@ import { SpotifyAuth } from "../auth/spotify-auth.ts";
 export interface TrackInfo {
   trackName: string;
   artistName: string;
+  albumName?: string; // アルバム名
+  albumType?: string; // アルバムタイプ (album, single, compilation)
   isPlaying: boolean;
   progressMs: number;
   durationMs: number;
   duration: number; // 秒数表示用
-  isInPlaylist: boolean; // プレイリスト情報用
   source: string; // 音源情報
-  contextType?: string; // 再生コンテキストタイプ (playlist, album, artist, etc.)
-  contextUri?: string; // 再生コンテキストURI
-  popularity?: number; // 人気度 (0-100)
+  popularity?: number; // 楽曲の人気度 (0-100)
+  albumPopularity?: number; // アルバムの人気度 (0-100)
+  artistPopularity?: number; // アーティストの人気度 (0-100)
   isLocal?: boolean; // ローカルファイルかどうか
-  playlistStatus?: "current" | "other" | "none"; // より正確なプレイリスト状態
 }
 
 export class SpotifyPlayer {
@@ -30,58 +30,65 @@ export class SpotifyPlayer {
   }
 
   /**
-   * 楽曲が指定されたプレイリストに実際に含まれているかチェック
+   * アルバムの人気度を取得
    */
-  private async isTrackInPlaylist(
-    trackId: string,
-    playlistId: string
-  ): Promise<boolean> {
-    if (!this.auth.isAuthenticated) {
-      return false;
+  private async getAlbumPopularity(
+    albumId: string
+  ): Promise<number | undefined> {
+    if (!this.auth.isAuthenticated || !albumId) {
+      return undefined;
     }
 
     try {
-      // プレイリストIDからspotify:playlist:の部分を取り除く
-      const cleanPlaylistId = playlistId.replace("spotify:playlist:", "");
+      const res = await fetch(`https://api.spotify.com/v1/albums/${albumId}`, {
+        headers: {
+          Authorization: `Bearer ${this.auth.token}`,
+        },
+      });
 
-      // プレイリストの楽曲を取得（最大50件ずつ）
-      let offset = 0;
-      const limit = 50;
-      let hasMore = true;
-
-      while (hasMore) {
-        const res = await fetch(
-          `https://api.spotify.com/v1/playlists/${cleanPlaylistId}/tracks?limit=${limit}&offset=${offset}&fields=items(track(id)),total`,
-          {
-            headers: {
-              Authorization: `Bearer ${this.auth.token}`,
-            },
-          }
-        );
-
-        if (!res.ok) {
-          console.error(`Error checking playlist tracks: ${res.status}`);
-          return false;
-        }
-
-        const data = await res.json();
-
-        // 現在のバッチで楽曲をチェック
-        for (const item of data.items) {
-          if (item.track?.id === trackId) {
-            return true;
-          }
-        }
-
-        // 次のページがあるかチェック
-        offset += limit;
-        hasMore = offset < data.total;
+      if (!res.ok) {
+        console.error(`Error getting album popularity: ${res.status}`);
+        return undefined;
       }
 
-      return false;
+      const data = await res.json();
+      return typeof data.popularity === "number" ? data.popularity : undefined;
     } catch (error) {
-      console.error("Error checking track in playlist:", error);
-      return false;
+      console.error("Error getting album popularity:", error);
+      return undefined;
+    }
+  }
+
+  /**
+   * アーティストの人気度を取得
+   */
+  private async getArtistPopularity(
+    artistId: string
+  ): Promise<number | undefined> {
+    if (!this.auth.isAuthenticated || !artistId) {
+      return undefined;
+    }
+
+    try {
+      const res = await fetch(
+        `https://api.spotify.com/v1/artists/${artistId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${this.auth.token}`,
+          },
+        }
+      );
+
+      if (!res.ok) {
+        console.error(`Error getting artist popularity: ${res.status}`);
+        return undefined;
+      }
+
+      const data = await res.json();
+      return typeof data.popularity === "number" ? data.popularity : undefined;
+    } catch (error) {
+      console.error("Error getting artist popularity:", error);
+      return undefined;
     }
   }
 
@@ -138,50 +145,39 @@ export class SpotifyPlayer {
       return null;
     }
 
-    // プレイリスト状態の正確な判定
-    let playlistStatus: "current" | "other" | "none" = "none";
-    const isInPlaylist = data.context && data.context.type === "playlist";
+    // アルバムとアーティストの人気度を取得
+    const albumId = data.item.album?.id;
+    const artistId = data.item.artists?.[0]?.id;
 
-    if (data.context) {
-      if (data.context.type === "playlist") {
-        // プレイリストから再生中 - 実際に楽曲がプレイリストに含まれているかチェック
-        const actuallyInPlaylist = await this.isTrackInPlaylist(
-          data.item.id,
-          data.context.uri
-        );
-        playlistStatus = actuallyInPlaylist ? "current" : "none";
-      } else if (["album", "artist", "show"].includes(data.context.type)) {
-        // アルバム、アーティスト、ポッドキャストから再生
-        // この楽曲が他のプレイリストにある可能性が高い
-        playlistStatus = "other";
-      } else {
-        // ミックス、レコメンド、ラジオなど
-        playlistStatus = "none";
-      }
-    }
+    const albumPopularity = albumId
+      ? await this.getAlbumPopularity(albumId)
+      : undefined;
+    const artistPopularity = artistId
+      ? await this.getArtistPopularity(artistId)
+      : undefined;
 
     const trackInfo: TrackInfo = {
       trackName: data.item.name,
       artistName: data.item.artists
         .map((artist: any) => artist.name)
         .join(", "),
+      albumName: data.item.album?.name || undefined, // アルバム名
+      albumType: data.item.album?.album_type || undefined, // アルバムタイプ
       isPlaying: data.is_playing,
       progressMs: data.progress_ms,
       durationMs: data.item.duration_ms,
       duration: Math.floor(data.item.duration_ms / 1000), // ミリ秒から秒に変換
-      isInPlaylist: playlistStatus === "current", // 実際にプレイリストに含まれている場合のみtrue
       source: "Spotify",
-      contextType: data.context?.type || null,
-      contextUri: data.context?.uri || null,
       popularity:
         typeof data.item.popularity === "number"
           ? data.item.popularity
           : undefined,
+      albumPopularity: albumPopularity,
+      artistPopularity: artistPopularity,
       isLocal:
         typeof data.item.is_local === "boolean"
           ? data.item.is_local
           : undefined,
-      playlistStatus: playlistStatus,
     };
 
     this.lastTrackInfo = trackInfo;

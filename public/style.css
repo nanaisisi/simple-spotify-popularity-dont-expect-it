@@ -14,21 +14,65 @@ body {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
-#track-info p {
-  margin: 8px 0;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
-  font-weight: 500;
+/* Track Display Styles */
+#track-display {
+  background-color: rgba(29, 185, 84, 0.1);
+  border: 1px solid rgba(29, 185, 84, 0.3);
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
 }
 
-#track-info p:first-child {
-  font-size: 18px;
+#track-display h2 {
+  color: #1db954;
+  margin-bottom: 15px;
+}
+
+#track-info {
+  margin-bottom: 20px;
+}
+
+#track-name {
+  font-size: 20px;
   font-weight: bold;
   color: #1db954;
+  margin: 10px 0;
 }
 
-#track-info p:last-child {
+#artist-name {
+  font-size: 16px;
+  color: #ffffff;
+  margin: 8px 0;
+}
+
+#album-name {
   font-size: 14px;
   color: #cccccc;
+  font-style: italic;
+  margin: 8px 0;
+}
+
+#popularity-section {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 15px;
+  margin-top: 15px;
+}
+
+#popularity-section h3 {
+  color: #1db954;
+  margin-bottom: 10px;
+  font-size: 16px;
+}
+
+#track-popularity,
+#album-popularity,
+#artist-popularity {
+  font-size: 14px;
+  margin: 5px 0;
+  padding: 5px 10px;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
 }
 
 #controls {
