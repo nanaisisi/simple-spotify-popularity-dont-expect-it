@@ -33,7 +33,11 @@ export class ServerApp {
     this.spotifyAuth = new SpotifyAuth(this.config);
     this.spotifyPlayer = new SpotifyPlayer(this.spotifyAuth, this.config);
     this.unifiedPlayer = new UnifiedPlayer(this.spotifyPlayer, this.config);
-    this.routeHandler = new RouteHandler(this.config, this.spotifyAuth);
+    this.routeHandler = new RouteHandler(
+      this.config,
+      this.spotifyAuth,
+      this.unifiedPlayer
+    );
 
     console.log("✓ All components initialized successfully");
   }

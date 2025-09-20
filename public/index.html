@@ -10,6 +10,24 @@
     <div id="container">
       <h1>Spotify Popularity CLI</h1>
       <p>Login to Spotify to start monitoring track popularity.</p>
+
+      <!-- Track Info Display -->
+      <div id="track-display" style="display: none">
+        <h2>現在再生中</h2>
+        <div id="track-info">
+          <div id="track-name">楽曲名</div>
+          <div id="artist-name">アーティスト名</div>
+          <div id="album-name">アルバム名</div>
+
+          <div id="popularity-section">
+            <h3>人気度</h3>
+            <div id="track-popularity">楽曲: --/100</div>
+            <div id="album-popularity">アルバム: --/100</div>
+            <div id="artist-popularity">アーティスト: --/100</div>
+          </div>
+        </div>
+      </div>
+
       <div id="controls">
         <div id="login-section">
           <button id="login-btn" onclick="handleLogin()">
@@ -37,27 +55,6 @@
       </div>
     </div>
 
-    <!-- Spotify Overlay Container -->
-    <div id="overlay-container" style="display: none;">
-      <div id="track-info">
-        <div id="source-name" class="source-unknown">音源取得中...</div>
-        <div id="track-name">楽曲を取得中...</div>
-        <div id="artist-name">アーティスト名</div>
-        <div id="album-name">アルバム名</div>
-        <div id="time-info">
-          <span id="current-time">0:00</span> / <span id="track-duration">0:00</span>
-        </div>
-        <div id="track-indicators">
-          <span id="playlist-in-indicator" style="display: none;">📋 プレイリスト</span>
-          <span id="playlist-other-indicator" style="display: none;">🎵 アルバム再生</span>
-          <span id="playlist-none-indicator" style="display: none;">🔀 ミックス</span>
-          <span id="popularity-indicator" style="display: none;">人気度: --</span>
-          <span id="local-indicator" style="display: none;">ローカル</span>
-        </div>
-      </div>
-    </div>
-
     <script src="script.js" defer></script>
-    <script type="module" src="js/main.js"></script>
   </body>
 </html>
