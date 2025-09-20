@@ -1,0 +1,45 @@
+# Spotify Overlay Configuration File
+# コピーしてconfig.tomlとして使用してください
+
+[server]
+port = 8081
+redirect_uri = "http://127.0.0.1:8081/callback"
+
+[spotify]
+# Spotify Developer Dashboard (https://developer.spotify.com/dashboard) から取得
+client_id = ""     # あなたのSpotifyクライアントID
+client_secret = "" # あなたのSpotifyクライアントシークレット
+
+[vlc]
+enabled = true                                         # SpotifyとVLCを併用する場合はtrue
+host = "127.0.0.1"
+port = 8080
+password = "your_secure_password"                      # VLCのHTTPインターフェースパスワードを入力
+exe_path = "C:\\Program Files\\VideoLAN\\VLC\\vlc.exe"
+auto_start = false                                     # 自動起動は推奨しません
+show_gui = true                                        # VLCのGUIを表示
+
+[timing]
+vlc_connection_timeout = 3000 # VLC接続タイムアウト (ミリ秒)
+vlc_init_delay = 5000         # VLC初期化待機時間 (ミリ秒)
+vlc_retry_delay = 2000        # VLC接続リトライ間隔 (ミリ秒)
+vlc_fallback_delay = 10000    # VLC停止からSpotifyフォールバックまでの時間 (ミリ秒)
+
+[api]
+spotify_api_limit = 30            # Spotify API 1分間の制限回数
+spotify_rate_limit_window = 60000 # Spotify API制限時間ウィンドウ (ミリ秒)
+
+[warnings]
+login_warning_interval = 120000 # ログイン警告の間隔 (ミリ秒)
+login_warning_max_count = 2     # ログイン警告の最大回数
+
+[polling]
+long_polling_threshold = 30000 # 長時間ポーリングに切り替える時間 (ミリ秒)
+
+# VLC用ポーリング間隔（ローカルAPIなので高頻度）
+vlc_short_interval = 5000 # VLC短間隔ポーリング (5秒)
+vlc_long_interval = 10000 # VLC長間隔ポーリング (10秒)
+
+# Spotify用ポーリング間隔（API制限を考慮して低頻度）
+spotify_short_interval = 10000 # Spotify短間隔ポーリング (10秒)
+spotify_long_interval = 30000  # Spotify長間隔ポーリング (30秒)
