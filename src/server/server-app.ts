@@ -7,14 +7,12 @@ import { serve } from "https://deno.land/std@0.140.0/http/server.ts";
 import { loadConfig, validateConfig } from "../../config.ts";
 import { SpotifyAuth } from "../auth/spotify-auth.ts";
 import { SpotifyPlayer } from "../media/spotify-player.ts";
-import { UnifiedPlayer } from "../media/unified-player.ts";
 import { RouteHandler } from "./route-handler.ts";
 
 export class ServerApp {
   private config!: any;
   private spotifyAuth!: SpotifyAuth;
   private spotifyPlayer!: SpotifyPlayer;
-  private unifiedPlayer!: UnifiedPlayer;
   private routeHandler!: RouteHandler;
 
   constructor() {
@@ -32,12 +30,7 @@ export class ServerApp {
     // コンポーネントを初期化
     this.spotifyAuth = new SpotifyAuth(this.config);
     this.spotifyPlayer = new SpotifyPlayer(this.spotifyAuth, this.config);
-    this.unifiedPlayer = new UnifiedPlayer(this.spotifyPlayer, this.config);
-    this.routeHandler = new RouteHandler(
-      this.config,
-      this.spotifyAuth,
-      this.unifiedPlayer
-    );
+    this.routeHandler = new RouteHandler(this.config, this.spotifyAuth);
 
     console.log("✓ All components initialized successfully");
   }

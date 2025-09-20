@@ -6,14 +6,10 @@ export interface TrackInfo {
   albumName?: string; // アルバム名
   albumType?: string; // アルバムタイプ (album, single, compilation)
   isPlaying: boolean;
-  progressMs: number;
-  durationMs: number;
-  duration: number; // 秒数表示用
   source: string; // 音源情報
   popularity?: number; // 楽曲の人気度 (0-100)
   albumPopularity?: number; // アルバムの人気度 (0-100)
   artistPopularity?: number; // アーティストの人気度 (0-100)
-  isLocal?: boolean; // ローカルファイルかどうか
 }
 
 export class SpotifyPlayer {
@@ -27,69 +23,6 @@ export class SpotifyPlayer {
     this.auth = auth;
     this.config = config;
     this.apiCallResetTime = Date.now() + config.spotifyRateLimitWindow;
-  }
-
-  /**
-   * アルバムの人気度を取得
-   */
-  private async getAlbumPopularity(
-    albumId: string
-  ): Promise<number | undefined> {
-    if (!this.auth.isAuthenticated || !albumId) {
-      return undefined;
-    }
-
-    try {
-      const res = await fetch(`https://api.spotify.com/v1/albums/${albumId}`, {
-        headers: {
-          Authorization: `Bearer ${this.auth.token}`,
-        },
-      });
-
-      if (!res.ok) {
-        console.error(`Error getting album popularity: ${res.status}`);
-        return undefined;
-      }
-
-      const data = await res.json();
-      return typeof data.popularity === "number" ? data.popularity : undefined;
-    } catch (error) {
-      console.error("Error getting album popularity:", error);
-      return undefined;
-    }
-  }
-
-  /**
-   * アーティストの人気度を取得
-   */
-  private async getArtistPopularity(
-    artistId: string
-  ): Promise<number | undefined> {
-    if (!this.auth.isAuthenticated || !artistId) {
-      return undefined;
-    }
-
-    try {
-      const res = await fetch(
-        `https://api.spotify.com/v1/artists/${artistId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${this.auth.token}`,
-          },
-        }
-      );
-
-      if (!res.ok) {
-        console.error(`Error getting artist popularity: ${res.status}`);
-        return undefined;
-      }
-
-      const data = await res.json();
-      return typeof data.popularity === "number" ? data.popularity : undefined;
-    } catch (error) {
-      console.error("Error getting artist popularity:", error);
-      return undefined;
-    }
   }
 
   async getCurrentlyPlaying(): Promise<TrackInfo | null> {
@@ -145,16 +78,21 @@ export class SpotifyPlayer {
       return null;
     }
 
-    // アルバムとアーティストの人気度を取得
+    // Get album and artist popularity
     const albumId = data.item.album?.id;
-    const artistId = data.item.artists?.[0]?.id;
+    const artistId = data.item.artists?.[0]?.id; // Get first artist
 
-    const albumPopularity = albumId
-      ? await this.getAlbumPopularity(albumId)
-      : undefined;
-    const artistPopularity = artistId
-      ? await this.getArtistPopularity(artistId)
-      : undefined;
+    let albumPopularity: number | undefined;
+    let artistPopularity: number | undefined;
+
+    if (albumId) {
+      albumPopularity = (await this.getAlbumPopularity(albumId)) || undefined;
+    }
+
+    if (artistId) {
+      artistPopularity =
+        (await this.getArtistPopularity(artistId)) || undefined;
+    }
 
     const trackInfo: TrackInfo = {
       trackName: data.item.name,
@@ -164,23 +102,69 @@ export class SpotifyPlayer {
       albumName: data.item.album?.name || undefined, // アルバム名
       albumType: data.item.album?.album_type || undefined, // アルバムタイプ
       isPlaying: data.is_playing,
-      progressMs: data.progress_ms,
-      durationMs: data.item.duration_ms,
-      duration: Math.floor(data.item.duration_ms / 1000), // ミリ秒から秒に変換
       source: "Spotify",
       popularity:
         typeof data.item.popularity === "number"
           ? data.item.popularity
           : undefined,
-      albumPopularity: albumPopularity,
-      artistPopularity: artistPopularity,
-      isLocal:
-        typeof data.item.is_local === "boolean"
-          ? data.item.is_local
-          : undefined,
+      albumPopularity: albumPopularity || undefined,
+      artistPopularity: artistPopularity || undefined,
     };
 
     this.lastTrackInfo = trackInfo;
     return trackInfo;
+  }
+
+  async getAlbumPopularity(albumId: string): Promise<number | null> {
+    if (!this.auth.isAuthenticated) {
+      return null;
+    }
+
+    this.auth.checkTokenExpiration();
+
+    try {
+      const res = await fetch(`https://api.spotify.com/v1/albums/${albumId}`, {
+        headers: {
+          Authorization: `Bearer ${this.auth.token}`,
+        },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        return data.popularity || null;
+      }
+    } catch (error) {
+      // Silently handle errors
+    }
+
+    return null;
+  }
+
+  async getArtistPopularity(artistId: string): Promise<number | null> {
+    if (!this.auth.isAuthenticated) {
+      return null;
+    }
+
+    this.auth.checkTokenExpiration();
+
+    try {
+      const res = await fetch(
+        `https://api.spotify.com/v1/artists/${artistId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${this.auth.token}`,
+          },
+        }
+      );
+
+      if (res.ok) {
+        const data = await res.json();
+        return data.popularity || null;
+      }
+    } catch (error) {
+      // Silently handle errors
+    }
+
+    return null;
   }
 }

@@ -6,7 +6,6 @@
 import { loadConfig, validateConfig } from "../config.ts";
 import { SpotifyAuth } from "./auth/spotify-auth.ts";
 import { SpotifyPlayer } from "./media/spotify-player.ts";
-import { UnifiedPlayer } from "./media/unified-player.ts";
 
 async function main() {
   try {
@@ -17,7 +16,6 @@ async function main() {
     // Initialize components
     const spotifyAuth = new SpotifyAuth(config);
     const spotifyPlayer = new SpotifyPlayer(spotifyAuth, config);
-    const unifiedPlayer = new UnifiedPlayer(spotifyPlayer, config);
 
     // トークンファイルの変更を監視
     const watcher = Deno.watchFs("spotify_tokens.json");
@@ -47,12 +45,17 @@ async function main() {
     // Main polling loop
     while (true) {
       try {
-        const trackInfo = await unifiedPlayer.getCurrentlyPlaying();
+        const trackInfo = await spotifyPlayer.getCurrentlyPlaying();
 
         if (trackInfo && trackInfo.trackName !== lastTrackName) {
           lastTrackName = trackInfo.trackName;
           const popularity = trackInfo.popularity ?? "Unknown";
-          console.log(`${trackInfo.trackName} - Popularity: ${popularity}/100`);
+          const albumPopularity = trackInfo.albumPopularity ?? "Unknown";
+          const artistPopularity = trackInfo.artistPopularity ?? "Unknown";
+
+          console.log(
+            `${trackInfo.trackName} - Track: ${popularity}/100, Album: ${albumPopularity}/100, Artist: ${artistPopularity}/100`
+          );
         }
 
         await new Promise((resolve) =>
