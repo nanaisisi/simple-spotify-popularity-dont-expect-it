@@ -60,7 +60,7 @@ export function loadConfig(): Config {
     loginWarningInterval: configData.warnings?.login_warning_interval || 120000,
     loginWarningMaxCount: configData.warnings?.login_warning_max_count || 2,
     // ポーリング間隔
-    longPollingThreshold: configData.polling?.long_polling_threshold || 30000,
+    longPollingThreshold: configData.polling?.long_polling_threshold || 45000,
     spotifyShortInterval: configData.polling?.spotify_short_interval || 15000,
     spotifyLongInterval: configData.polling?.spotify_long_interval || 60000,
     // デバッグ設定

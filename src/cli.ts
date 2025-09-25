@@ -56,11 +56,19 @@ async function main() {
           if (trackInfo.trackName !== lastTrackName) {
             lastTrackName = trackInfo.trackName;
             currentTrackStartTime = now - (trackInfo.progressMs || 0); // 曲の開始時刻を計算
-            pollingInterval = config.spotifyShortInterval; // 新しい曲なので短間隔に戻す
+            pollingInterval = config.spotifyShortInterval; // 新しい曲なので通常間隔に戻す
 
             if (config.debugMode) {
+              const durationSec = trackInfo.durationMs
+                ? Math.round(trackInfo.durationMs / 1000)
+                : "Unknown";
+              const progressSec = trackInfo.progressMs
+                ? Math.round(trackInfo.progressMs / 1000)
+                : 0;
               console.log(
-                `[DEBUG] 新曲検知: ${trackInfo.trackName} (開始時刻: ${new Date(
+                `[DEBUG] 新曲検知: ${
+                  trackInfo.trackName
+                } (総時間: ${durationSec}秒, 現在: ${progressSec}秒, 開始時刻: ${new Date(
                   currentTrackStartTime
                 ).toLocaleTimeString()})`
               );
@@ -81,24 +89,27 @@ async function main() {
             const remaining = trackInfo.durationMs - trackInfo.progressMs; // 残り時間
             const elapsed = now - currentTrackStartTime; // 経過時間
 
+            // 経過時間が負の値になる場合（曲の開始時刻計算が狂っている）はリセット
+            const safeElapsed = Math.max(0, elapsed);
+
             if (remaining <= 3000) {
               // 曲終了が近い場合（3秒以内）
               // 次回の確認は曲終了後3秒以上待ってから
-              pollingInterval = config.spotifyShortInterval + 3000; // 15秒 + 3秒
+              pollingInterval = remaining + 3000; // 曲の残り時間 + 3秒
               if (config.debugMode) {
                 console.log(
                   `[DEBUG] 曲終了近接: 残り${Math.round(
                     remaining / 1000
-                  )}秒 → 次回確認まで${pollingInterval / 1000}秒`
+                  )}秒 → 次回確認まで${Math.round(pollingInterval / 1000)}秒`
                 );
               }
-            } else if (elapsed >= config.longPollingThreshold) {
+            } else if (safeElapsed >= config.longPollingThreshold) {
               // 同じ曲が45秒以上再生されている場合
               pollingInterval = config.spotifyLongInterval; // 60秒
               if (config.debugMode) {
                 console.log(
                   `[DEBUG] 長時間再生: 経過${Math.round(
-                    elapsed / 1000
+                    safeElapsed / 1000
                   )}秒 → 次回確認まで${pollingInterval / 1000}秒`
                 );
               }
