@@ -1,5 +1,5 @@
 /**
- * Main Server Entry Point - 分割後のサーバー起動ファイル
+ * メインサーバーエントリーポイント
  * ServerAppクラスを使用してサーバーを開始
  */
 
@@ -10,6 +10,6 @@ try {
   const app = new ServerApp();
   await app.start();
 } catch (error) {
-  console.error("Failed to start server:", error);
+  console.error("サーバー起動に失敗:", error);
   (globalThis as any).Deno.exit(1);
 }

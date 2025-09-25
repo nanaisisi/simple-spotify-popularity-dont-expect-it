@@ -1,17 +1,26 @@
 import { SpotifyAuth } from "../auth/spotify-auth.ts";
 
+/**
+ * トラック情報インターフェース
+ */
 export interface TrackInfo {
-  trackName: string;
-  artistName: string;
+  trackName: string; // トラック名
+  artistName: string; // アーティスト名
   albumName?: string; // アルバム名
   albumType?: string; // アルバムタイプ (album, single, compilation)
-  isPlaying: boolean;
+  isPlaying: boolean; // 再生中かどうか
   source: string; // 音源情報
   popularity?: number; // 楽曲の人気度 (0-100)
   albumPopularity?: number; // アルバムの人気度 (0-100)
   artistPopularity?: number; // アーティストの人気度 (0-100)
+  durationMs?: number; // 曲の総時間 (ミリ秒)
+  progressMs?: number; // 現在の再生位置 (ミリ秒)
 }
 
+/**
+ * Spotifyプレイヤークラス
+ * Spotify Web APIを使用して現在再生中のトラック情報を取得
+ */
 export class SpotifyPlayer {
   private auth: SpotifyAuth;
   private config: any;
@@ -25,13 +34,17 @@ export class SpotifyPlayer {
     this.apiCallResetTime = Date.now() + config.spotifyRateLimitWindow;
   }
 
+  /**
+   * 現在再生中のトラック情報を取得
+   * @returns トラック情報またはnull
+   */
   async getCurrentlyPlaying(): Promise<TrackInfo | null> {
     if (!this.auth.isAuthenticated) {
       this.auth.showLoginWarning();
       return null;
     }
 
-    // Rate limiting check - configurable API limit
+    // レートリミットチェック - 設定可能なAPI制限
     const now = Date.now();
     if (now > this.apiCallResetTime) {
       this.apiCallCount = 0;
@@ -39,7 +52,7 @@ export class SpotifyPlayer {
     }
 
     if (this.apiCallCount >= this.config.spotifyApiLimit) {
-      return this.lastTrackInfo; // Return cached info
+      return this.lastTrackInfo; // キャッシュされた情報を返す
     }
 
     this.auth.checkTokenExpiration();
@@ -55,21 +68,21 @@ export class SpotifyPlayer {
     );
 
     if (res.status === 204) {
-      // No content, nothing is playing
+      // コンテンツなし、何も再生されていない
       this.lastTrackInfo = null;
       return null;
     }
     if (res.status === 401) {
-      // Unauthorized, token might have expired
+      // 認証エラー、トークンが期限切れの可能性
       await this.auth.refreshAccessToken();
-      return this.getCurrentlyPlaying(); // Retry after refreshing
+      return this.getCurrentlyPlaying(); // リフレッシュ後に再試行
     }
     if (res.status === 429) {
-      // Rate limited by Spotify
-      return this.lastTrackInfo; // Return cached info
+      // Spotifyによるレート制限
+      return this.lastTrackInfo; // キャッシュされた情報を返す
     }
     if (!res.ok) {
-      return this.lastTrackInfo; // Return cached info on error
+      return this.lastTrackInfo; // エラー時はキャッシュされた情報を返す
     }
 
     const data = await res.json();
@@ -78,9 +91,9 @@ export class SpotifyPlayer {
       return null;
     }
 
-    // Get album and artist popularity
+    // アルバムとアーティストの人気度を取得
     const albumId = data.item.album?.id;
-    const artistId = data.item.artists?.[0]?.id; // Get first artist
+    const artistId = data.item.artists?.[0]?.id; // 最初のアーティストを取得
 
     let albumPopularity: number | undefined;
     let artistPopularity: number | undefined;
@@ -109,12 +122,19 @@ export class SpotifyPlayer {
           : undefined,
       albumPopularity: albumPopularity || undefined,
       artistPopularity: artistPopularity || undefined,
+      durationMs: data.item.duration_ms || undefined, // 曲の総時間
+      progressMs: data.progress_ms || undefined, // 現在の再生位置
     };
 
     this.lastTrackInfo = trackInfo;
     return trackInfo;
   }
 
+  /**
+   * アルバムの人気度を取得
+   * @param albumId アルバムID
+   * @returns 人気度（0-100）またはnull
+   */
   async getAlbumPopularity(albumId: string): Promise<number | null> {
     if (!this.auth.isAuthenticated) {
       return null;
@@ -134,12 +154,17 @@ export class SpotifyPlayer {
         return data.popularity || null;
       }
     } catch (error) {
-      // Silently handle errors
+      // エラーを静かに処理
     }
 
     return null;
   }
 
+  /**
+   * アーティストの人気度を取得
+   * @param artistId アーティストID
+   * @returns 人気度（0-100）またはnull
+   */
   async getArtistPopularity(artistId: string): Promise<number | null> {
     if (!this.auth.isAuthenticated) {
       return null;
@@ -162,7 +187,7 @@ export class SpotifyPlayer {
         return data.popularity || null;
       }
     } catch (error) {
-      // Silently handle errors
+      // エラーを静かに処理
     }
 
     return null;

@@ -1,6 +1,6 @@
 /**
- * CLI for displaying Spotify track popularity
- * Polls currently playing track and displays track name and popularity
+ * Spotifyトラック人気度表示CLI
+ * 現在再生中のトラックをポーリングし、トラック名と人気度を表示
  */
 
 import { loadConfig, validateConfig } from "../config.ts";
@@ -9,11 +9,11 @@ import { SpotifyPlayer } from "./media/spotify-player.ts";
 
 async function main() {
   try {
-    // Load and validate configuration
+    // 設定を読み込み・検証
     const config = loadConfig();
     validateConfig(config);
 
-    // Initialize components
+    // コンポーネントを初期化
     const spotifyAuth = new SpotifyAuth(config);
     const spotifyPlayer = new SpotifyPlayer(spotifyAuth, config);
 
@@ -41,31 +41,88 @@ async function main() {
     }
 
     let lastTrackName = "";
+    let currentTrackStartTime = 0; // 現在の曲の開始時刻
+    let pollingInterval = config.spotifyShortInterval; // 初期は短間隔
 
-    // Main polling loop
+    // メインのポーリングループ
     while (true) {
       try {
         const trackInfo = await spotifyPlayer.getCurrentlyPlaying();
 
-        if (trackInfo && trackInfo.trackName !== lastTrackName) {
-          lastTrackName = trackInfo.trackName;
-          const popularity = trackInfo.popularity ?? "Unknown";
-          const albumPopularity = trackInfo.albumPopularity ?? "Unknown";
-          const artistPopularity = trackInfo.artistPopularity ?? "Unknown";
+        if (trackInfo) {
+          const now = Date.now();
 
-          console.log(
-            `${trackInfo.trackName} - Track: ${popularity}/100, Album: ${albumPopularity}/100, Artist: ${artistPopularity}/100`
-          );
+          // 曲が変わった場合の処理
+          if (trackInfo.trackName !== lastTrackName) {
+            lastTrackName = trackInfo.trackName;
+            currentTrackStartTime = now - (trackInfo.progressMs || 0); // 曲の開始時刻を計算
+            pollingInterval = config.spotifyShortInterval; // 新しい曲なので短間隔に戻す
+
+            if (config.debugMode) {
+              console.log(
+                `[DEBUG] 新曲検知: ${trackInfo.trackName} (開始時刻: ${new Date(
+                  currentTrackStartTime
+                ).toLocaleTimeString()})`
+              );
+            }
+
+            // 人気度を表示
+            const popularity = trackInfo.popularity ?? "Unknown";
+            const albumPopularity = trackInfo.albumPopularity ?? "Unknown";
+            const artistPopularity = trackInfo.artistPopularity ?? "Unknown";
+
+            console.log(
+              `${trackInfo.trackName} - Track: ${popularity}/100, Album: ${albumPopularity}/100, Artist: ${artistPopularity}/100`
+            );
+          }
+
+          // 動的ポーリング間隔の計算
+          if (trackInfo.durationMs && trackInfo.progressMs !== undefined) {
+            const remaining = trackInfo.durationMs - trackInfo.progressMs; // 残り時間
+            const elapsed = now - currentTrackStartTime; // 経過時間
+
+            if (remaining <= 3000) {
+              // 曲終了が近い場合（3秒以内）
+              // 次回の確認は曲終了後3秒以上待ってから
+              pollingInterval = config.spotifyShortInterval + 3000; // 15秒 + 3秒
+              if (config.debugMode) {
+                console.log(
+                  `[DEBUG] 曲終了近接: 残り${Math.round(
+                    remaining / 1000
+                  )}秒 → 次回確認まで${pollingInterval / 1000}秒`
+                );
+              }
+            } else if (elapsed >= config.longPollingThreshold) {
+              // 同じ曲が45秒以上再生されている場合
+              pollingInterval = config.spotifyLongInterval; // 60秒
+              if (config.debugMode) {
+                console.log(
+                  `[DEBUG] 長時間再生: 経過${Math.round(
+                    elapsed / 1000
+                  )}秒 → 次回確認まで${pollingInterval / 1000}秒`
+                );
+              }
+            } else {
+              // 曲が続く場合はスキップ（次回ポーリングまで待機）
+              pollingInterval = config.spotifyShortInterval; // 通常間隔で次回確認
+              if (config.debugMode) {
+                console.log(
+                  `[DEBUG] 通常確認: 残り${Math.round(
+                    remaining / 1000
+                  )}秒 → 次回確認まで${pollingInterval / 1000}秒`
+                );
+              }
+            }
+          }
         }
 
-        await new Promise((resolve) =>
-          setTimeout(resolve, config.pollingInterval)
-        );
+        // 計算された間隔で待機
+        await new Promise((resolve) => setTimeout(resolve, pollingInterval));
       } catch (error) {
         // エラーメッセージも表示しない
-        await new Promise((resolve) =>
-          setTimeout(resolve, config.pollingInterval)
-        );
+        // エラー時は短間隔で再試行
+        pollingInterval = config.spotifyShortInterval;
+        await new Promise((resolve) => setTimeout(resolve, pollingInterval));
       }
     }
   } catch (error) {

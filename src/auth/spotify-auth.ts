@@ -1,5 +1,9 @@
 import { encode } from "https://deno.land/std@0.140.0/encoding/base64.ts";
 
+/**
+ * Spotify認証クラス
+ * OAuth2認証とトークン管理を担当
+ */
 export class SpotifyAuth {
   private accessToken: string | null = null;
   private refreshToken: string | null = null;
@@ -16,6 +20,9 @@ export class SpotifyAuth {
     this.loadTokens();
   }
 
+  /**
+   * トークンをファイルから読み込み
+   */
   private loadTokens(): void {
     try {
       const tokenData = Deno.readTextFileSync(this.tokenFilePath);
@@ -24,14 +31,20 @@ export class SpotifyAuth {
       this.refreshToken = tokens.refreshToken;
       this.tokenExpiresAt = tokens.tokenExpiresAt;
     } catch (error) {
-      // File doesn't exist or is invalid, start with no tokens
+      // ファイルが存在しないか無効な場合はトークンなしで開始
     }
   }
 
+  /**
+   * トークンを再読み込み
+   */
   public reloadTokens(): void {
     this.loadTokens();
   }
 
+  /**
+   * トークンをファイルに保存
+   */
   private saveTokens(): void {
     try {
       const tokens = {
@@ -44,21 +57,30 @@ export class SpotifyAuth {
         JSON.stringify(tokens, null, 2)
       );
     } catch (error) {
-      console.error("Failed to save tokens:", error);
+      console.error("トークンの保存に失敗:", error);
     }
   }
 
+  /**
+   * 認証状態を取得
+   */
   get isAuthenticated(): boolean {
     return this.accessToken !== null;
   }
 
+  /**
+   * アクセストークンを取得
+   */
   get token(): string | null {
     return this.accessToken;
   }
 
+  /**
+   * アクセストークンをリフレッシュ
+   */
   async refreshAccessToken(): Promise<void> {
     if (!this.refreshToken) {
-      console.error("No refresh token available");
+      console.error("リフレッシュトークンが利用できません");
       return;
     }
 
@@ -78,8 +100,8 @@ export class SpotifyAuth {
 
     if (!res.ok) {
       const body = await res.text();
-      console.error(`Error refreshing token: ${body}`);
-      // Potentially handle this by forcing a re-login
+      console.error(`トークンリフレッシュエラー: ${body}`);
+      // 再ログインを強制する可能性あり
       this.accessToken = null;
       this.refreshToken = null;
       return;
@@ -88,7 +110,7 @@ export class SpotifyAuth {
     const data = await res.json();
     this.accessToken = data.access_token;
     this.tokenExpiresAt = Date.now() + data.expires_in * 1000;
-    console.log("Access token refreshed");
+    console.log("アクセストークンをリフレッシュしました");
 
     // リフレッシュトークンが更新された場合も保存
     if (data.refresh_token) {
@@ -97,6 +119,11 @@ export class SpotifyAuth {
     this.saveTokens();
   }
 
+  /**
+   * OAuthコールバックを処理
+   * @param code 認証コード
+   * @returns 成功したかどうか
+   */
   async handleCallback(code: string): Promise<boolean> {
     const res = await fetch("https://accounts.spotify.com/api/token", {
       method: "POST",
@@ -115,7 +142,7 @@ export class SpotifyAuth {
 
     if (!res.ok) {
       const body = await res.text();
-      console.error(`Authentication error: ${body}`);
+      console.error(`認証エラー: ${body}`);
       return false;
     }
 
@@ -127,7 +154,7 @@ export class SpotifyAuth {
     // ログイン成功時に警告カウントをリセット
     this.loginWarningCount = 0;
     this.lastLoginWarningTime = 0;
-    console.log("✓ Spotify authentication successful!");
+    console.log("✓ Spotify認証成功！");
 
     // トークンをファイルに保存
     this.saveTokens();
@@ -135,6 +162,10 @@ export class SpotifyAuth {
     return true;
   }
 
+  /**
+   * 認証URLを生成
+   * @returns 認証URL
+   */
   getAuthUrl(): string {
     const scope = "user-read-currently-playing";
     const authUrl = new URL("https://accounts.spotify.com/authorize");
@@ -145,12 +176,18 @@ export class SpotifyAuth {
     return authUrl.toString();
   }
 
+  /**
+   * トークンの有効期限をチェック
+   */
   checkTokenExpiration(): void {
     if (this.tokenExpiresAt && Date.now() >= this.tokenExpiresAt) {
       this.refreshAccessToken();
     }
   }
 
+  /**
+   * ログインワーニングを表示
+   */
   showLoginWarning(): void {
     const now = Date.now();
     if (
@@ -160,14 +197,12 @@ export class SpotifyAuth {
       this.loginWarningCount++;
       this.lastLoginWarningTime = now;
       console.warn(
-        `⚠️  Spotify not authenticated! (Warning ${this.loginWarningCount}/${this.config.loginWarningMaxCount})`
+        `⚠️  Spotifyが認証されていません！ (警告 ${this.loginWarningCount}/${this.config.loginWarningMaxCount})`
       );
       console.warn(
-        `   Please go to http://127.0.0.1:${this.config.port}/login to authenticate`
+        `   認証するには http://127.0.0.1:${this.config.port}/login にアクセスしてください`
       );
-      console.warn(
-        `   Without authentication, no track information will be available.`
-      );
+      console.warn(`   認証なしではトラック情報が取得できません。`);
     }
   }
 }
